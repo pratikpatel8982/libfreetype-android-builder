@@ -17,7 +17,7 @@ fi
 
 if [ ! -d "freetype" ]
 then
-  git clone https://github.com/freetype/freetype.git --depth=1 -b VER-2-13-2
+  git clone https://github.com/freetype/freetype.git --depth=1 -b VER-2-14-3
 fi
 
 API_LEVEL=21
@@ -51,16 +51,24 @@ do
   export CC="${TOOLCHAIN}/bin/${TARGET}${API_LEVEL}-clang"
   export CXX="${TOOLCHAIN}/bin/${TARGET}${API_LEVEL}-clang++"
 
-  export CFLAGS="-fPIC -O3 -Wl,-z,max-page-size=16384"
-  export CXXFLAGS="-fPIC -O3 -Wl,-z,max-page-size=16384"
-  export LDFLAGS="-L${PREFIX}/lib/${ABI} -Wl,-z,max-page-size=16384"
+  # zlib + libpng are required for color emoji / embedded bitmap glyph support
+  ZLIB_PREBUILT=$($READLINK -f ../prebuilt/zlib)
+  LIBPNG_PREBUILT=$($READLINK -f ../prebuilt/libpng)
+
+  export PKG_CONFIG_PATH="${ZLIB_PREBUILT}/lib/${ABI}/pkgconfig:${LIBPNG_PREBUILT}/lib/${ABI}/pkgconfig"
+  export PKG_CONFIG_LIBDIR="${ZLIB_PREBUILT}/lib/${ABI}/pkgconfig:${LIBPNG_PREBUILT}/lib/${ABI}/pkgconfig"
+
+  export CPPFLAGS="-I${ZLIB_PREBUILT}/include -I${LIBPNG_PREBUILT}/include/libpng16"
+  export CFLAGS="-fPIC -O3 -I${ZLIB_PREBUILT}/include -I${LIBPNG_PREBUILT}/include/libpng16 -Wl,-z,max-page-size=16384"
+  export CXXFLAGS="-fPIC -O3 -I${ZLIB_PREBUILT}/include -I${LIBPNG_PREBUILT}/include/libpng16 -Wl,-z,max-page-size=16384"
+  export LDFLAGS="-L${PREFIX}/lib/${ABI} -L${ZLIB_PREBUILT}/lib/${ABI} -L${LIBPNG_PREBUILT}/lib/${ABI} -Wl,-z,max-page-size=16384"
 
   if [ ! -f "${PREBUILT_DIR}/lib/${ABI}/libfreetype.a" ]
   then
     echo "Building freetype for ${ABI}..."
     cd freetype
     ./autogen.sh
-    ./configure --host=${TARGET} --prefix="${PREFIX}" --libdir="${PREFIX}/lib/${ABI}" --enable-static --disable-shared --without-harfbuzz --without-png --without-zlib --without-bzip2 --without-brotli
+    ./configure --host=${TARGET} --prefix="${PREFIX}" --libdir="${PREFIX}/lib/${ABI}" --enable-static --disable-shared --without-harfbuzz --with-png=yes --with-zlib=yes --without-bzip2 --without-brotli
     make clean
     make -j${CORES}
     make install
