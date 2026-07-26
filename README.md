@@ -12,4 +12,6 @@ bash ./build.sh
 Requirements:
 - Android SDK & NDK
 - Autotools (autoconf, automake, libtool)
+- prebuilt libpng (via libpng-android-builder)
+- prebuilt zlib (via zlib-android-builder)
 - some dev tools
